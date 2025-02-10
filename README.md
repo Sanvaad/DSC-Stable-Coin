@@ -1,205 +1,182 @@
-# Foundry DeFi Stablecoin
+# Decentralized Stablecoin System
 
-This is a section of the Cyfrin Foundry Solidity Course.
+A minimal decentralized stablecoin system implemented in Solidity. This system is designed to be as simple as possible while ensuring that the stablecoin (DSC) remains fully overcollateralized. It is inspired by MakerDAO’s DAI but without governance, fees, or multiple collateral types beyond the basics.
 
-[DSCEngine Example](https://sepolia.etherscan.io/address/0x091ea0838ebd5b7dda2f2a641b068d6d59639b98#code)
-[Decentralized Stablecoin Example](https://sepolia.etherscan.io/address/0xf30021646269007b0bdc0763fd736c6380602f2f#code)
+The system includes:
 
-# About
+- **DecentralizedStableCoin.sol**: An ERC20 token contract representing the stablecoin (DSC). This token is mintable and burnable only by the DSCEngine.
+- **DSCEngine.sol**: The core engine that manages collateral deposits, minting, burning, collateral redemption, and liquidation of undercollateralized positions.
+- **HelperConfig.s.sol**: A configuration contract that sets up network-specific parameters (like price feed and collateral token addresses). It deploys mocks when running on local networks (e.g., Anvil) and uses real addresses on testnets like Sepolia.
+- **DeployDSC.s.sol**: A Foundry deployment script that deploys the DSC and DSCEngine contracts and configures them appropriately (including transferring the ownership of DSC to the DSCEngine).
 
-This project is meant to be a stablecoin where users can deposit WETH and WBTC in exchange for a token that will be pegged to the USD.
+---
 
-- [Foundry DeFi Stablecoin](#foundry-defi-stablecoin)
-- [About](#about)
-- [Getting Started](#getting-started)
-  - [Requirements](#requirements)
-  - [Quickstart](#quickstart)
-    - [Optional Gitpod](#optional-gitpod)
-- [Updates](#updates)
+## Table of Contents
+
+- [Overview](#overview)
+- [File Structure](#file-structure)
+- [Installation](#installation)
 - [Usage](#usage)
-  - [Start a local node](#start-a-local-node)
-  - [Deploy](#deploy)
-  - [Deploy - Other Network](#deploy---other-network)
-  - [Testing](#testing)
-    - [Test Coverage](#test-coverage)
-- [Deployment to a testnet or mainnet](#deployment-to-a-testnet-or-mainnet)
-  - [Scripts](#scripts)
-  - [Estimate gas](#estimate-gas)
-- [Formatting](#formatting)
-- [Slither](#slither)
-- [Additional Info:](#additional-info)
-  - [Let's talk about what "Official" means](#lets-talk-about-what-official-means)
-  - [Summary](#summary)
-- [Thank you!](#thank-you)
+  - [Running Tests](#running-tests)
+  - [Deploying Contracts](#deploying-contracts)
+- [Contract Details](#contract-details)
+- [Dependencies](#dependencies)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
-# Getting Started
+---
 
-## Requirements
+## Overview
 
-- [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-  - You'll know you did it right if you can run `git --version` and you see a response like `git version x.x.x`
-- [foundry](https://getfoundry.sh/)
-  - You'll know you did it right if you can run `forge --version` and you see a response like `forge 0.2.0 (816e00b 2023-03-16T00:05:26.396218Z)`
+This repository implements a decentralized stablecoin system with the following features:
 
-## Quickstart
+- **Overcollateralization**: The system enforces a minimum collateralization ratio to ensure stability.
+- **Collateral Management**: Users can deposit collateral tokens (e.g., WETH and WBTC) and mint DSC against the value of their collateral.
+- **Liquidation Mechanism**: Under-collateralized positions can be liquidated to bring the system back to a safe state. Liquidators receive a bonus on the collateral they claim.
+- **Price Feeds Integration**: Uses Chainlink (or mock versions thereof) to fetch up-to-date collateral prices, ensuring accurate USD valuations.
+- **Foundry Scripting**: Uses Foundry for deployment and testing, making it easy to deploy to various networks.
 
-```
-git clone https://github.com/Cyfrin/foundry-defi-stablecoin-cu
-cd foundry-defi-stablecoin-cu
-forge build
-```
+---
 
-### Optional Gitpod
+## File Structure
 
-If you can't or don't want to run and install locally, you can work with this repo in Gitpod. If you do this, you can skip the `clone this repo` part.
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#github.com/PatrickAlphaC/foundry-smart-contract-lottery-cu)
-
-# Updates
-
-- The latest version of openzeppelin-contracts has changes in the ERC20Mock file. To follow along with the course, you need to install version 4.8.3 which can be done by `forge install openzeppelin/openzeppelin-contracts@v4.8.3 --no-commit` instead of `forge install openzeppelin/openzeppelin-contracts --no-commit`
-
-# Usage
-
-## Start a local node
-
-```
-make anvil
+```plaintext
+.
+├── contracts
+│   ├── DecentralizedStableCoin.sol    # ERC20 token contract for the stablecoin (DSC)
+│   ├── DSCEngine.sol                  # Core engine for collateral management, minting/burning, and liquidation
+│   └── libraries
+│       └── OracleLib.sol              # Library for interacting with Chainlink (or mock) price feeds
+├── script
+│   ├── DeployDSC.s.sol                # Foundry deployment script for DSC and DSCEngine
+│   └── HelperConfig.s.sol             # Configuration script for network-specific settings & mocks
+├── test
+│   └── ...                            # Test files (not provided here, but you can add your tests)
+└── README.md                          # This file
 ```
 
-## Deploy
+---
 
-This will default to your local node. You need to have it running in another terminal in order for it to deploy.
+## Installation
 
-```
-make deploy
-```
+1. **Clone the Repository**
 
-## Deploy - Other Network
+   ```bash
+   git clone https://github.com/your-username/your-repo.git
+   cd your-repo
+   ```
 
-[See below](#deployment-to-a-testnet-or-mainnet)
+2. **Install Foundry**
 
-## Testing
+   This project uses [Foundry](https://github.com/foundry-rs/foundry) for development, testing, and deployment. If you haven’t installed Foundry yet, run:
 
-We talk about 4 test tiers in the video.
+   ```bash
+   curl -L https://foundry.paradigm.xyz | bash
+   foundryup
+   ```
 
-1. Unit
-2. Integration
-3. Forked
-4. Staging
+3. **Install Dependencies**
 
-In this repo we cover #1 and Fuzzing.
+   The project leverages OpenZeppelin contracts and other libraries. You can install these dependencies using Foundry:
 
-```
+   ```bash
+   forge install OpenZeppelin/openzeppelin-contracts
+   ```
+
+4. **Set Environment Variables**
+
+   If deploying to a network like Sepolia, ensure you set the `PRIVATE_KEY` environment variable:
+
+   ```bash
+   export PRIVATE_KEY=your-private-key-here
+   ```
+
+---
+
+## Usage
+
+### Running Tests
+
+You can run the tests (once you add them under the `test` directory) with:
+
+```bash
 forge test
 ```
 
-### Test Coverage
+### Deploying Contracts
 
-```
-forge coverage
-```
+Deploy the contracts using Foundry’s script runner. For example, to deploy to a testnet, run:
 
-and for coverage based testing:
-
-```
-forge coverage --report debug
+```bash
+forge script script/DeployDSC.s.sol --broadcast --verify --rpc-url <YOUR_RPC_URL>
 ```
 
-# Deployment to a testnet or mainnet
+Replace `<YOUR_RPC_URL>` with the RPC URL of your chosen network (e.g., Infura, Alchemy).
 
-1. Setup environment variables
+---
 
-You'll want to set your `SEPOLIA_RPC_URL` and `PRIVATE_KEY` as environment variables. You can add them to a `.env` file, similar to what you see in `.env.example`.
+## Contract Details
 
-- `PRIVATE_KEY`: The private key of your account (like from [metamask](https://metamask.io/)). **NOTE:** FOR DEVELOPMENT, PLEASE USE A KEY THAT DOESN'T HAVE ANY REAL FUNDS ASSOCIATED WITH IT.
-  - You can [learn how to export it here](https://metamask.zendesk.com/hc/en-us/articles/360015289632-How-to-Export-an-Account-Private-Key).
-- `SEPOLIA_RPC_URL`: This is url of the sepolia testnet node you're working with. You can get setup with one for free from [Alchemy](https://alchemy.com/?a=673c802981)
+### DecentralizedStableCoin.sol
 
-Optionally, add your `ETHERSCAN_API_KEY` if you want to verify your contract on [Etherscan](https://etherscan.io/).
+- **Purpose**: Implements an ERC20 stablecoin (DSC) that is mintable and burnable.
+- **Key Features**:
+  - Only the DSCEngine (owner) can mint or burn DSC.
+  - Uses OpenZeppelin’s ERC20, ERC20Burnable, and Ownable for secure and standard token functionality.
+  - Provides error handling to ensure valid transactions (e.g., burning more than the balance).
 
-1. Get testnet ETH
+### DSCEngine.sol
 
-Head over to [faucets.chain.link](https://faucets.chain.link/) and get some testnet ETH. You should see the ETH show up in your metamask.
+- **Purpose**: Manages collateral deposits, minting, burning, collateral redemption, and liquidation.
+- **Key Features**:
+  - Enforces overcollateralization through a health factor mechanism.
+  - Integrates with Chainlink price feeds (or mocks) to determine the USD value of deposited collateral.
+  - Supports operations to deposit collateral and mint DSC, redeem collateral by burning DSC, and liquidate undercollateralized accounts.
+  - Uses OpenZeppelin’s `ReentrancyGuard` to prevent reentrancy attacks.
+  - Contains detailed NatSpec comments for clarity on each function’s purpose and usage.
 
-2. Deploy
+### HelperConfig.s.sol
 
-```
-make deploy ARGS="--network sepolia"
-```
+- **Purpose**: Provides configuration for the system based on the network.
+- **Key Features**:
+  - Sets up addresses for price feeds and collateral tokens.
+  - Deploys mock contracts for local testing (e.g., on Anvil) if real addresses are not available.
+  - Supports both local and testnet (e.g., Sepolia) configurations.
 
-## Scripts
+### DeployDSC.s.sol
 
-Instead of scripts, we can directly use the `cast` command to interact with the contract.
+- **Purpose**: A deployment script written with Foundry that automates the deployment process.
+- **Key Features**:
+  - Instantiates the HelperConfig to load the correct network configuration.
+  - Deploys the DecentralizedStableCoin and DSCEngine contracts.
+  - Transfers ownership of the DSC token to the DSCEngine, ensuring that only DSCEngine can mint or burn DSC.
 
-For example, on Sepolia:
+---
 
-1. Get some WETH
+## Dependencies
 
-```
-cast send 0xdd13E55209Fd76AfE204dBda4007C227904f0a81 "deposit()" --value 0.1ether --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY
-```
+- **Foundry**: For compiling, testing, and deploying the contracts.
+- **OpenZeppelin Contracts**: Provides secure implementations for ERC20 tokens, ownership, and reentrancy guards.
+- **Chainlink Aggregator Interface**: For integrating with price feeds.
+- **Mock Contracts**: (e.g., `MockV3Aggregator.sol`, `ERC20Mock`) used for local testing and development.
 
-2. Approve the WETH
+---
 
-```
-cast send 0xdd13E55209Fd76AfE204dBda4007C227904f0a81 "approve(address,uint256)" 0x091EA0838eBD5b7ddA2F2A641B068d6D59639b98 1000000000000000000 --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY
-```
+## License
 
-3. Deposit and Mint DSC
+This project is licensed under the [MIT License](LICENSE).
 
-```
-cast send 0x091EA0838eBD5b7ddA2F2A641B068d6D59639b98 "depositCollateralAndMintDsc(address,uint256,uint256)" 0xdd13E55209Fd76AfE204dBda4007C227904f0a81 100000000000000000 10000000000000000 --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY
-```
+---
 
-## Estimate gas
+## Acknowledgments
 
-You can estimate how much gas things cost by running:
+- **MakerDAO**: For inspiring the design and mechanism behind overcollateralized stablecoins.
+- **OpenZeppelin**: For their robust and secure smart contract implementations.
+- **Foundry**: For providing an excellent framework for Ethereum development.
+- **Chainlink**: For enabling decentralized price feeds that help maintain the system's stability.
 
-```
-forge snapshot
-```
+---
 
-And you'll see an output file called `.gas-snapshot`
+Happy Coding! 🚀
 
-# Formatting
-
-To run code formatting:
-
-```
-forge fmt
-```
-
-# Slither
-
-```
-slither :; slither . --config-file slither.config.json
-```
-
-# Additional Info:
-Some users were having a confusion that whether Chainlink-brownie-contracts is an official Chainlink repository or not. Here is the info.
-Chainlink-brownie-contracts is an official repo. The repository is owned and maintained by the chainlink team for this very purpose, and gets releases from the proper chainlink release process. You can see it's still the `smartcontractkit` org as well.
-
-https://github.com/smartcontractkit/chainlink-brownie-contracts
-
-## Let's talk about what "Official" means
-The "official" release process is that chainlink deploys it's packages to [npm](https://www.npmjs.com/package/@chainlink/contracts). So technically, even downloading directly from `smartcontractkit/chainlink` is wrong, because it could be using unreleased code.
-
-So, then you have two options:
-
-1. Download from NPM and have your codebase have dependencies foreign to foundry
-2. Download from the chainlink-brownie-contracts repo which already downloads from npm and then packages it nicely for you to use in foundry.
-## Summary
-1. That is an official repo maintained by the same org
-2. It downloads from the official release cycle `chainlink/contracts` use (npm) and packages it nicely for digestion from foundry.
-
-# Thank you!
-
-If you appreciated this, feel free to follow me or donate!
-
-ETH/zkSync/Arbitrum/Optimism Address(`cyfrin1.eth`): 0x3846c3A30E62075Fa916216b35EF04B8F53931f6
-
-[![Patrick Collins Twitter](https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com/PatrickAlphaC)
-[![Patrick Collins YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/channel/UCn-3f8tw_E1jZvhuHatROwA)
-[![Patrick Collins Linkedin](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/patrickalphac/)
-[![Patrick Collins Medium](https://img.shields.io/badge/Medium-000000?style=for-the-badge&logo=medium&logoColor=white)](https://medium.com/@patrick.collins_58673/)
+Feel free to contribute, open issues, or provide feedback. Enjoy building on a decentralized future!
